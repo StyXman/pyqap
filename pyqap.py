@@ -84,15 +84,29 @@ def find_files(start: str) -> Entry:
     return entries[start]
 
 
+# see https://stackoverflow.com/a/14996816
+suffixes = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB']
+def human_size(size):
+    exp = 0
+
+    while size >= 1024 and exp < len(suffixes) - 1:
+        size /= 1024
+        exp += 1
+
+    f = (f"""{size:.2f}""").rstrip('0').rstrip('.')
+
+    return f"""{f}{suffixes[exp]}"""
+
+
 def dump_tree(entry, indent=0):
     '''Dump a tree of Entry's in a quasi nice tree format.'''
     if entry.children is not None:
-        print(f"""{'  ' * indent}`- {entry.name} [{entry.size}/{entry.full_size}]""")
+        print(f"""{'  ' * indent}`- {entry.name} [{human_size(entry.size)}/{human_size(entry.full_size)}]""")
 
         for child in entry.children:
             dump_tree(child, indent + 1)
     else:
-        print(f"""{'  ' * indent}`- {entry.name} [{entry.size}]""")
+        print(f"""{'  ' * indent}`- {entry.name} [{human_size(entry.size)}]""")
 
 
 # pylint: disable=missing-class-docstring,missing-function-docstring
