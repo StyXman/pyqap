@@ -15,7 +15,8 @@ from PyQt6.QtWidgets import QApplication, QWidget  # pylint: disable=no-name-in-
 
 class Entry:
     '''Entries have a root, a name, a local size, a total size, and a list of children.'''
-    def __init__(self, name:str, size:int, full_size:Optional[int], children:Optional[list]):
+    def __init__(self, root:str, name:str, size:int, full_size:Optional[int], children:Optional[list]):
+        self.root = root
         self.name = name
         self.size = size
         self.full_size = full_size
@@ -34,37 +35,37 @@ class Entry:
             self.full_size += child.full_size
 
 
-def find_files(start: str) -> tuple:
+def find_files(start: str) -> Entry:
     '''Return an Entry representing the start directory.'''
-    entries = {start: (start, '.', 0, 0, [])}  # type: dict
+    entries = { start: Entry(start, '.', 0, 0, []) }  # type: dict[str, Entry]
 
     for root, dirs, files, root_fd in os.fwalk(start):
         root_entry = entries[root]
 
         for dir in dirs:  # pylint: disable=redefined-builtin
-            entry = (root, dir, 0, 0, [])  # type: tuple
+            entry = Entry(root, dir, 0, 0, [])
             entries[os.path.join(root, dir)] = entry
-            root_entry[4].append(entry)
+            root_entry.append(entry)
 
         for file in files:
             file_size = os.stat(file, dir_fd=root_fd).st_size
-            entry = (root, file, file_size, None, None)
-            root_entry[4].append(entry)
+            entry = Entry(root, file, file_size, None, None)
+            root_entry.append(entry)
 
     return entries[start]
 
 
 def test():
     '''crappy test function until we grow.'''
-    root_entry = Entry('root', 0, 0, [])
-    first_file = Entry('first_file', 10, None, None)
+    root_entry = Entry('root', '.', 0, 0, [])
+    first_file = Entry('root', 'first_file', 10, None, None)
     root_entry.append(first_file)
 
     assert root_entry.size == 10
     assert root_entry.full_size == 10
 
-    first_subdir = Entry('first_subdir', 0, 0, [])
-    second_file = Entry('second_file', 100, None, None)
+    first_subdir = Entry('root', 'first_subdir', 0, 0, [])
+    second_file = Entry('root/first_subdir', 'second_file', 100, None, None)
     first_subdir.append(second_file)
 
     assert first_subdir.size == 100
@@ -79,8 +80,8 @@ def test():
     ##################################################################
 
     root = find_files('tests/find_files')
-    dirs = [ entry for entry in root[4] if entry[4] is not None ]
-    files = [ entry for entry in root[4] if entry[4] is None ]
+    dirs = [ entry for entry in root.children if entry.children is not None ]
+    files = [ entry for entry in root.children if entry.children is None ]
 
     assert len(dirs) == 2, f"""{dirs=}"""
     assert len(files) == 5, f"""{files=}"""
