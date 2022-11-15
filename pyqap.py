@@ -45,6 +45,16 @@ class Entry:
     __repr__ = __str__
 
 
+def update_sizes(entry):
+    '''Update an Entry's full_size with it's chldren full_sizes, after computing them.'''
+    if entry.children is not None:
+        for child in entry.children:
+            # files are already computed in Entry.append()
+            if child.children is not None:
+                update_sizes(child)
+                entry.full_size += child.full_size
+
+
 def find_files(start: str) -> Entry:
     '''Return an Entry representing the start directory.'''
     entries = { start: Entry(start, '.', 0, 0, []) }  # type: dict[str, Entry]
