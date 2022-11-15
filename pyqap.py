@@ -32,7 +32,7 @@ class Entry:
             self.size += child.size
             self.full_size += child.size
         else:
-            # dir
+            # dir; the way the algo works makes this 0 anyways :(
             self.full_size += child.full_size
 
     def __str__(self):
@@ -171,7 +171,8 @@ def main():
     window.setWindowTitle('pyqap')
     window.show()
 
-    find_files(os.path.join(os.environ['HOME'], 'src', 'projects'))
+    tree = find_files(os.path.join(os.environ['HOME'], 'src', 'projects'))
+    dump_tree(tree)
 
     sys.exit(app.exec())
 
