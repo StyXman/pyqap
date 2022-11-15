@@ -79,6 +79,17 @@ def find_files(start: str) -> Entry:
     return entries[start]
 
 
+def dump_tree(entry, indent=0):
+    '''Dump a tree of Entry's in a quasi nice tree format.'''
+    if entry.children is not None:
+        print(f"""{'  ' * indent}`- {entry.name} [{entry.size}/{entry.full_size}]""")
+
+        for child in entry.children:
+            dump_tree(child, indent + 1)
+    else:
+        print(f"""{'  ' * indent}`- {entry.name} [{entry.size}]""")
+
+
 # pylint: disable=missing-class-docstring,missing-function-docstring
 class TestEntry(unittest.TestCase):
     def setUp(self):
@@ -141,6 +152,8 @@ class TestFindFiles(unittest.TestCase):
     def test_sizes(self):
         self.assertEqual(self.root.size, 10 * 1024)
         self.assertEqual(self.root.full_size, (10 + 20 + 30 + 40) * 1024)
+
+        dump_tree(self.root)
 
 
 def main():
