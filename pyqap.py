@@ -153,6 +153,7 @@ class TestFindFiles(unittest.TestCase):
         self.assertEqual(self.root.size, 10 * 1024)
         self.assertEqual(self.root.full_size, (10 + 20 + 30 + 40) * 1024)
 
+        print()
         dump_tree(self.root)
 
 
