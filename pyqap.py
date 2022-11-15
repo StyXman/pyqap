@@ -9,6 +9,7 @@ import os
 import sys
 
 from typing import Optional# , List
+import unittest
 
 from PyQt6.QtWidgets import QApplication, QWidget  # pylint: disable=no-name-in-module
 
@@ -72,39 +73,74 @@ def find_files(start: str) -> Entry:
             entry = Entry(root, file, file_size, None, None)
             root_entry.append(entry)
 
+    # subdirs are added before their full_sizes are computed, so we have to do another pass updating them
+    update_sizes(entries[start])
+
     return entries[start]
 
 
-def test():
-    '''crappy test function until we grow.'''
-    root_entry = Entry('root', '.', 0, 0, [])
-    first_file = Entry('root', 'first_file', 10, None, None)
-    root_entry.append(first_file)
+# pylint: disable=missing-class-docstring,missing-function-docstring
+class TestEntry(unittest.TestCase):
+    def setUp(self):
+        self.root_entry = Entry('root', '.', 0, 0, [])
+        self.first_file = Entry('root', 'first_file', 10, None, None)
+        self.first_subdir = Entry('root', 'first_subdir', 0, 0, [])
+        self.second_file = Entry('root/first_subdir', 'second_file', 100, None, None)
 
-    assert root_entry.size == 10
-    assert root_entry.full_size == 10
+    def test_one_dir_one_file_sizes(self):
+        self.root_entry.append(self.first_file)
 
-    first_subdir = Entry('root', 'first_subdir', 0, 0, [])
-    second_file = Entry('root/first_subdir', 'second_file', 100, None, None)
-    first_subdir.append(second_file)
+        self.assertEqual(self.root_entry.size, 10)
+        self.assertEqual(self.root_entry.full_size, 10)
 
-    assert first_subdir.size == 100
-    assert first_subdir.full_size == 100
+    def test_two_dirs_two_files_sizes(self):
+        self.root_entry.append(self.first_file)
+        self.first_subdir.append(self.second_file)
+        self.root_entry.append(self.first_subdir)
 
-    root_entry.append(first_subdir)
+        self.assertEqual(self.first_subdir.size, 100)
+        self.assertEqual(self.first_subdir.full_size, 100)
 
-    assert root_entry.size == 10
-    assert root_entry.full_size == 110
+        self.assertEqual(self.root_entry.size, 10)
+        self.assertEqual(self.root_entry.full_size, 110)
 
 
-    ##################################################################
+# pylint: disable=missing-class-docstring,missing-function-docstring
+class TestUpdateSizes(unittest.TestCase):
+    def setUp(self):
+        self.root_entry = Entry('root', '.', 0, 0, [])
+        self.first_file = Entry('root', 'first_file', 10, None, None)
+        self.first_subdir = Entry('root', 'first_subdir', 0, 0, [])
+        self.second_file = Entry('root/first_subdir', 'second_file', 100, None, None)
 
-    root = find_files('tests/find_files')
-    dirs = [ entry for entry in root.children if entry.children is not None ]
-    files = [ entry for entry in root.children if entry.children is None ]
+    def test_all(self):
+        self.root_entry.append(self.first_subdir)
+        self.root_entry.append(self.first_file)
+        self.first_subdir.append(self.second_file)
+        update_sizes(self.root_entry)
 
-    assert len(dirs) == 2, f"""{dirs=}"""
-    assert len(files) == 6, f"""{files=}"""
+        self.assertEqual(self.first_subdir.size, 100)
+        self.assertEqual(self.first_subdir.full_size, 100)
+
+        self.assertEqual(self.root_entry.size, 10)
+        self.assertEqual(self.root_entry.full_size, 110)
+
+
+# pylint: disable=missing-class-docstring,missing-function-docstring
+class TestFindFiles(unittest.TestCase):
+    def setUp(self):
+        self.root = find_files('tests/find_files')
+
+    def test_root_contents(self):
+        dirs = [ entry for entry in self.root.children if entry.children is not None ]
+        files = [ entry for entry in self.root.children if entry.children is None ]
+
+        self.assertEqual(len(dirs), 2, f"""{dirs=}""")
+        self.assertEqual(len(files), 6, f"""{files=}""")
+
+    def test_sizes(self):
+        self.assertEqual(self.root.size, 10 * 1024)
+        self.assertEqual(self.root.full_size, (10 + 20 + 30 + 40) * 1024)
 
 
 def main():
@@ -121,6 +157,7 @@ def main():
     sys.exit(app.exec())
 
 if len(sys.argv) > 1 and sys.argv[1] == 'test':
-    test()
+    del sys.argv[1]
+    unittest.main()
 elif __name__ == '__main__':
     main()
