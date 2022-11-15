@@ -8,4 +8,3 @@ mypy:
 
 test:
 	time ./pyqap.py test -v
-

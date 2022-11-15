@@ -87,15 +87,16 @@ def find_files(start: str) -> Entry:
 # see https://stackoverflow.com/a/14996816
 suffixes = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB']
 def human_size(size):
-    exp = 0
+    '''Return size in a human readbale representation.'''
+    index = 0
 
-    while size >= 1024 and exp < len(suffixes) - 1:
+    while size >= 1024 and index < len(suffixes) - 1:
         size /= 1024
-        exp += 1
+        index += 1
 
-    f = (f"""{size:.2f}""").rstrip('0').rstrip('.')
+    string_repr = (f"""{size:.2f}""").rstrip('0').rstrip('.')
 
-    return f"""{f}{suffixes[exp]}"""
+    return f"""{string_repr}{suffixes[index]}"""
 
 
 def dump_tree(entry, indent=0):
