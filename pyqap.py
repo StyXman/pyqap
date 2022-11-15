@@ -5,46 +5,85 @@ PyQap application: backup with rsync by selecting exactly what and what not to b
 '''
 
 import os
-from pprint import pprint
+# from pprint import pprint
 import sys
+
+from typing import Optional# , List
 
 from PyQt6.QtWidgets import QApplication, QWidget  # pylint: disable=no-name-in-module
 
 
 class Entry:
-    def __init__(self, name, size):
-        self.name = None
+    '''Entries have a root, a name, a local size, a total size, and a list of children.'''
+    def __init__(self, name:str, size:int, full_size:Optional[int], children:Optional[list]):
+        self.name = name
+        self.size = size
+        self.full_size = full_size
+        self.children = children
 
-def find_files(root: str) -> list:
-    '''
-    Return a list of entries. Entries have a root, a name, a local size, a total size, and a list of children.
-    '''
-    data = []
-    entries = {}
 
-    for root, dirs, files, root_fd in os.fwalk(root):
-        size = 0
+    def append(self, child):
+        '''Apeend a child and update sizes as needed.'''
+        self.children.append(child)
+        if child.children is None:
+            # file
+            self.size += child.size
+            self.full_size += child.size
+        else:
+            # dir
+            self.full_size += child.full_size
 
-        """
-        for dir in dirs:
-            entry = (dir, 0, [])
-            entries[root] = entry
-        """
+
+def find_files(start: str) -> tuple:
+    '''Return an Entry representing the start directory.'''
+    entries = {start: (start, '.', 0, 0, [])}  # type: dict
+
+    for root, dirs, files, root_fd in os.fwalk(start):
+        root_entry = entries[root]
+
+        for dir in dirs:  # pylint: disable=redefined-builtin
+            entry = (root, dir, 0, 0, [])  # type: tuple
+            entries[os.path.join(root, dir)] = entry
+            root_entry[4].append(entry)
 
         for file in files:
-            entry = (root, file, os.stat(file, dir_fd=root_fd).st_size, None, None)
-            data.append(entry)
+            file_size = os.stat(file, dir_fd=root_fd).st_size
+            entry = (root, file, file_size, None, None)
+            root_entry[4].append(entry)
 
-    return data
+    return entries[start]
 
 
 def test():
-    '''crappy test function untl we grow.'''
-    data = find_files('tests/find_files')
-    files = [ entry for entry in data if entry[4] is None ]
+    '''crappy test function until we grow.'''
+    root_entry = Entry('root', 0, 0, [])
+    first_file = Entry('first_file', 10, None, None)
+    root_entry.append(first_file)
 
-    assert len(files) == 5
+    assert root_entry.size == 10
+    assert root_entry.full_size == 10
 
+    first_subdir = Entry('first_subdir', 0, 0, [])
+    second_file = Entry('second_file', 100, None, None)
+    first_subdir.append(second_file)
+
+    assert first_subdir.size == 100
+    assert first_subdir.full_size == 100
+
+    root_entry.append(first_subdir)
+
+    assert root_entry.size == 10
+    assert root_entry.full_size == 110
+
+
+    ##################################################################
+
+    root = find_files('tests/find_files')
+    dirs = [ entry for entry in root[4] if entry[4] is not None ]
+    files = [ entry for entry in root[4] if entry[4] is None ]
+
+    assert len(dirs) == 2, f"""{dirs=}"""
+    assert len(files) == 5, f"""{files=}"""
 
 
 def main():
