@@ -1,2 +1,11 @@
+all: mypy test lint
+
 lint:
-	pylint pyqap.py
+	time pylint pyqap.py
+
+mypy:
+	time mypy pyqap.py
+
+test:
+	time ./pyqap.py test
+
