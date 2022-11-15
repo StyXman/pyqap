@@ -69,7 +69,12 @@ def find_files(start: str) -> Entry:
             root_entry.append(entry)
 
         for file in files:
-            file_size = os.stat(file, dir_fd=root_fd).st_size
+            try:
+                file_size = os.stat(file, dir_fd=root_fd).st_size
+            except FileNotFoundError:
+                # must be a dangling symlink or it was just deleted, ignore
+                file_size = 0
+
             entry = Entry(root, file, file_size, None, None)
             root_entry.append(entry)
 
