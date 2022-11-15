@@ -58,7 +58,7 @@ def update_sizes(entry):
 
 def find_files(start: str) -> Entry:
     '''Return an Entry representing the start directory.'''
-    entries = { start: Entry(start, '.', 0, 0, []) }  # type: dict[str, Entry]
+    entries = { start: Entry(start, os.path.basename(start), 0, 0, []) }  # type: dict[str, Entry]
 
     for root, dirs, files, root_fd in os.fwalk(start):
         root_entry = entries[root]
@@ -82,7 +82,7 @@ def find_files(start: str) -> Entry:
 # pylint: disable=missing-class-docstring,missing-function-docstring
 class TestEntry(unittest.TestCase):
     def setUp(self):
-        self.root_entry = Entry('root', '.', 0, 0, [])
+        self.root_entry = Entry('root', 'root', 0, 0, [])
         self.first_file = Entry('root', 'first_file', 10, None, None)
         self.first_subdir = Entry('root', 'first_subdir', 0, 0, [])
         self.second_file = Entry('root/first_subdir', 'second_file', 100, None, None)
@@ -108,7 +108,7 @@ class TestEntry(unittest.TestCase):
 # pylint: disable=missing-class-docstring,missing-function-docstring
 class TestUpdateSizes(unittest.TestCase):
     def setUp(self):
-        self.root_entry = Entry('root', '.', 0, 0, [])
+        self.root_entry = Entry('root', 'root', 0, 0, [])
         self.first_file = Entry('root', 'first_file', 10, None, None)
         self.first_subdir = Entry('root', 'first_subdir', 0, 0, [])
         self.second_file = Entry('root/first_subdir', 'second_file', 100, None, None)
