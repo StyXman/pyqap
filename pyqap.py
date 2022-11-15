@@ -84,7 +84,7 @@ def test():
     files = [ entry for entry in root.children if entry.children is None ]
 
     assert len(dirs) == 2, f"""{dirs=}"""
-    assert len(files) == 5, f"""{files=}"""
+    assert len(files) == 6, f"""{files=}"""
 
 
 def main():
