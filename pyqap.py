@@ -13,7 +13,6 @@ from typing import Optional# , List
 from PyQt6.QtWidgets import QApplication, QWidget  # pylint: disable=no-name-in-module
 
 
-# pylint: disable=too-few-public-methods
 class Entry:
     '''Entries have a root, a name, a local size, a total size, and a list of children.'''
     def __init__(self, root:str, name:str, size:int, full_size:Optional[int], children:Optional[list]):  #pylint: disable=too-many-arguments
@@ -34,6 +33,16 @@ class Entry:
         else:
             # dir
             self.full_size += child.full_size
+
+    def __str__(self):
+        if self.children is None:
+            string = f"""Entry({self.name!r}, {self.size})"""
+        else:
+            string = f"""Entry({self.name!r}, {self.size}, {self.full_size}, [ ... {len(self.children)} ... ])"""
+
+        return string
+
+    __repr__ = __str__
 
 
 def find_files(start: str) -> Entry:
