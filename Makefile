@@ -7,5 +7,5 @@ mypy:
 	time mypy pyqap.py
 
 test:
-	time ./pyqap.py test
+	time ./pyqap.py test -v
 
