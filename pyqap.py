@@ -13,9 +13,10 @@ from typing import Optional# , List
 from PyQt6.QtWidgets import QApplication, QWidget  # pylint: disable=no-name-in-module
 
 
+# pylint: disable=too-few-public-methods
 class Entry:
     '''Entries have a root, a name, a local size, a total size, and a list of children.'''
-    def __init__(self, root:str, name:str, size:int, full_size:Optional[int], children:Optional[list]):
+    def __init__(self, root:str, name:str, size:int, full_size:Optional[int], children:Optional[list]):  #pylint: disable=too-many-arguments
         self.root = root
         self.name = name
         self.size = size
