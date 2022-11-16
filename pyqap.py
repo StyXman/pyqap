@@ -142,28 +142,41 @@ class Model(QAbstractItemModel):
 
 
     # pylint: disable=no-self-use
-    def data(self, index: QModelIndex, role: int) -> QVariant:
-        '''Return data for the view at index, column.'''
-        if not index.isValid():
-            return QVariant()
-
-        if role != Qt.ItemDataRole.DisplayRole:  # type: ignore
-            return QVariant()
-
+    def raw_data(self, index: QModelIndex) -> QVariant:
+        '''Return raw data for the view at index, column.'''
         entry = index.internalPointer()
 
         match index.column():
             case 0:
                 data = entry.name
             case 1:
-                data = human_size(entry.size)
+                data = entry.size
             # no, I'm not gonna test for file, etc
             case 2:
-                data = human_size(entry.full_size)
+                data = entry.full_size
             case 3:
                 data = 0
             case _:
                 raise ValueError(f"""data({entry=}, column={index.column()}) not in [0-4].""")
+
+        return data
+
+
+    # pylint: disable=no-self-use
+    def data(self, index: QModelIndex, role: int) -> QVariant:
+        if not index.isValid():
+            return QVariant()
+
+        if role != Qt.ItemDataRole.DisplayRole:  # type: ignore
+            return QVariant()
+
+        data = self.raw_data(index)
+
+        match index.column():
+            case 1:
+                data = human_size(data)
+            case 2:
+                data = human_size(data)
 
         return data
 
@@ -185,6 +198,28 @@ class Model(QAbstractItemModel):
             return header
 
         return QVariant()
+
+
+class SortableModel(QSortFilterProxyModel):
+    '''A sortable model that know how to sort our human readbale sizes.'''
+
+    # pylint: disable=invalid-name, no-self-use
+    def lessThan(self, left_index, right_index: QModelIndex) -> bool:
+        try:
+            left = self.sourceModel().raw_data(left_index)
+            right = self.sourceModel().raw_data(right_index)
+            result = left < right
+            # print(f"""{left_index.column()}:{left=} < {right_index.column()}:{right=}: {result}""")
+            return result
+        except TypeError as e:
+            # this is counter intuitive, but this way works
+            if right is None:
+                result = False
+            else:
+                result = True
+
+            # print(f"""{left_index.column()}:{left=} < {right_index.column()}:{right=}: {result} ({e.args})""")
+            return result
 
 
 def update_sizes(entry):
@@ -336,7 +371,7 @@ def main():
 
     model = Model(tree, app)
 
-    sorting_model = QSortFilterProxyModel(app)
+    sorting_model = SortableModel(app)
     sorting_model.setSourceModel(model)
 
     tree_view = QTreeView(window)
