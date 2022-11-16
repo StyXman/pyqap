@@ -12,7 +12,7 @@ from typing import Optional# , List
 import unittest
 
 from PyQt6.QtCore import QAbstractItemModel, QModelIndex, QObject, Qt, QVariant  # pylint: disable=no-name-in-module
-from PyQt6.QtWidgets import QApplication, QTreeView, QWidget  # pylint: disable=no-name-in-module
+from PyQt6.QtWidgets import QApplication, QHBoxLayout, QTreeView, QWidget  # pylint: disable=no-name-in-module
 
 
 class Tree:
@@ -325,8 +325,15 @@ def main():
     window.setWindowTitle('pyqap')
     window.show()
 
-    tree = find_files(os.path.join(os.environ['HOME'], 'src', 'projects'))
-    dump_tree(tree.root)
+    layout = QHBoxLayout(window)
+
+    model = Model(tree, app)
+
+    tree_view = QTreeView(window)
+    tree_view.setModel(model)
+    tree_view.show()
+
+    layout.addWidget(tree_view)
 
     sys.exit(app.exec())
 
