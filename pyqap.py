@@ -14,10 +14,16 @@ import unittest
 from PyQt6.QtWidgets import QApplication, QWidget  # pylint: disable=no-name-in-module
 
 
-class Entry:
-    '''Entries have a root, a name, a local size, a total size, and a list of children.'''
-    def __init__(self, root:str, name:str, size:int, full_size:Optional[int], children:Optional[list]):  #pylint: disable=too-many-arguments
+class Tree:
+    '''A map of dir paths to Entries plus a root Entry.'''
+    def __init__(self, entries, root):
+        self.entries = entries
         self.root = root
+
+class Entry:
+    '''Entries have a parent_dir, a name, a local size, a total size, and a list of children.'''
+    def __init__(self, parent_dir:str, name:str, size:int, full_size:Optional[int], children:Optional[list]):  #pylint: disable=too-many-arguments
+        self.parent_dir = parent_dir
         self.name = name
         self.size = size
         self.full_size = full_size
@@ -56,32 +62,32 @@ def update_sizes(entry):
                 entry.full_size += child.full_size
 
 
-def find_files(start: str) -> Entry:
+def find_files(start: str) -> Tree:
     '''Return an Entry representing the start directory.'''
     entries = { start: Entry(start, os.path.basename(start), 0, 0, []) }  # type: dict[str, Entry]
 
-    for root, dirs, files, root_fd in os.fwalk(start):
-        root_entry = entries[root]
+    for parent_dir, dirs, files, parent_dir_fd in os.fwalk(start):
+        parent_dir_entry = entries[parent_dir]
 
         for dir in dirs:  # pylint: disable=redefined-builtin
-            entry = Entry(root, dir, 0, 0, [])
-            entries[os.path.join(root, dir)] = entry
-            root_entry.append(entry)
+            entry = Entry(parent_dir, dir, 0, 0, [])
+            entries[os.path.join(parent_dir, dir)] = entry
+            parent_dir_entry.append(entry)
 
         for file in files:
             try:
-                file_size = os.stat(file, dir_fd=root_fd).st_size
+                file_size = os.stat(file, dir_fd=parent_dir_fd).st_size
             except FileNotFoundError:
                 # must be a dangling symlink or it was just deleted, ignore
                 file_size = 0
 
-            entry = Entry(root, file, file_size, None, None)
-            root_entry.append(entry)
+            entry = Entry(parent_dir, file, file_size, None, None)
+            parent_dir_entry.append(entry)
 
     # subdirs are added before their full_sizes are computed, so we have to do another pass updating them
     update_sizes(entries[start])
 
-    return entries[start]
+    return Tree(entries, entries[start])
 
 
 # see https://stackoverflow.com/a/14996816
@@ -160,21 +166,21 @@ class TestUpdateSizes(unittest.TestCase):
 # pylint: disable=missing-class-docstring,missing-function-docstring
 class TestFindFiles(unittest.TestCase):
     def setUp(self):
-        self.root = find_files('tests/find_files')
+        self.tree = find_files('tests/find_files')
 
     def test_root_contents(self):
-        dirs = [ entry for entry in self.root.children if entry.children is not None ]
-        files = [ entry for entry in self.root.children if entry.children is None ]
+        dirs = [ entry for entry in self.tree.root.children if entry.children is not None ]
+        files = [ entry for entry in self.tree.root.children if entry.children is None ]
 
         self.assertEqual(len(dirs), 2, f"""{dirs=}""")
         self.assertEqual(len(files), 6, f"""{files=}""")
 
     def test_sizes(self):
-        self.assertEqual(self.root.size, 10 * 1024)
-        self.assertEqual(self.root.full_size, (10 + 20 + 30 + 40) * 1024)
+        self.assertEqual(self.tree.root.size, 10 * 1024)
+        self.assertEqual(self.tree.root.full_size, (10 + 20 + 30 + 40) * 1024)
 
         print()
-        dump_tree(self.root)
+        dump_tree(self.tree.root)
 
 
 def main():
@@ -187,7 +193,7 @@ def main():
     window.show()
 
     tree = find_files(os.path.join(os.environ['HOME'], 'src', 'projects'))
-    dump_tree(tree)
+    dump_tree(tree.root)
 
     sys.exit(app.exec())
 
