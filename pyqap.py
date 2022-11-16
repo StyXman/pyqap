@@ -15,6 +15,7 @@ from PyQt6.QtCore import QAbstractItemModel, QModelIndex, QObject, Qt, QVariant 
 from PyQt6.QtWidgets import QApplication, QHBoxLayout, QTreeView, QWidget  # pylint: disable=no-name-in-module
 
 
+# pylint: disable=too-few-public-methods
 class Tree:
     '''A map of dir paths to Entries plus a root Entry.'''
     def __init__(self, entries, root):
@@ -322,6 +323,8 @@ class TestFindFiles(unittest.TestCase):
 
 def main():
     ''' Main function. '''
+    tree = find_files('tests')
+    dump_tree(tree.root)
 
     app = QApplication(sys.argv)
 
