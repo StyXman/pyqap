@@ -11,7 +11,7 @@ import sys
 from typing import Optional# , List
 import unittest
 
-from PyQt6.QtCore import QAbstractItemModel, QModelIndex, QObject, Qt, QVariant  # pylint: disable=no-name-in-module
+from PyQt6.QtCore import QAbstractItemModel, QModelIndex, QObject, QSortFilterProxyModel, Qt, QVariant  # pylint: disable=no-name-in-module
 from PyQt6.QtWidgets import QApplication, QHBoxLayout, QTreeView, QWidget  # pylint: disable=no-name-in-module
 
 
@@ -336,8 +336,12 @@ def main():
 
     model = Model(tree, app)
 
+    sorting_model = QSortFilterProxyModel(app)
+    sorting_model.setSourceModel(model)
+
     tree_view = QTreeView(window)
-    tree_view.setModel(model)
+    tree_view.setModel(sorting_model)
+    tree_view.setSortingEnabled(True)
     tree_view.show()
 
     layout.addWidget(tree_view)
