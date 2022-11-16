@@ -155,10 +155,10 @@ class Model(QAbstractItemModel):
             case 0:
                 data = entry.name
             case 1:
-                data = entry.size
+                data = human_size(entry.size)
             # no, I'm not gonna test for file, etc
             case 2:
-                data = entry.full_size
+                data = human_size(entry.full_size)
             case 3:
                 data = 0
             case _:
@@ -226,8 +226,11 @@ def find_files(start: str) -> Tree:
 
 # see https://stackoverflow.com/a/14996816
 suffixes = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB']
-def human_size(size):
+def human_size(size: Optional[int]):
     '''Return size in a human readbale representation.'''
+    if size is None:
+        return None
+
     index = 0
 
     while size >= 1024 and index < len(suffixes) - 1:
