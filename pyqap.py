@@ -44,6 +44,7 @@ class Entry:
             # dir; the way the algo works makes this 0 anyways :(
             self.full_size += child.full_size
 
+
     def __str__(self):
         if self.children is None:
             string = f"""Entry({self.name!r}, {self.size})"""
@@ -51,6 +52,7 @@ class Entry:
             string = f"""Entry({self.name!r}, {self.size}, {self.full_size}, [ ... {len(self.children)} ... ])"""
 
         return string
+
 
     __repr__ = __str__
 
@@ -87,7 +89,6 @@ class Model(QAbstractItemModel):
 
 
 
-    @pysnooper.snoop()
     def parent(self, index: QModelIndex) -> QModelIndex:
         '''.'''
         if not index.isValid():
