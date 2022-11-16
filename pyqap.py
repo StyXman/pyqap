@@ -11,7 +11,8 @@ import sys
 from typing import Optional# , List
 import unittest
 
-from PyQt6.QtWidgets import QApplication, QWidget  # pylint: disable=no-name-in-module
+from PyQt6.QtCore import QAbstractItemModel, QModelIndex, QObject, Qt, QVariant  # pylint: disable=no-name-in-module
+from PyQt6.QtWidgets import QApplication, QTreeView, QWidget  # pylint: disable=no-name-in-module
 
 
 class Tree:
@@ -27,6 +28,8 @@ class Entry:
         self.name = name
         self.size = size
         self.full_size = full_size
+        self.included = False
+        self.selected_size = 0
         self.children = children
 
 
@@ -50,6 +53,136 @@ class Entry:
         return string
 
     __repr__ = __str__
+
+
+class Model(QAbstractItemModel):
+    '''Model for QTreeViews.'''
+    def __init__(self, tree: Tree, parent: QObject):
+        super().__init__(parent)
+        self.tree = tree
+
+
+    def index(self, row: int, column: int, parent: QModelIndex) -> QModelIndex:
+        '''Returns indexes for views and delegates.'''
+        if not self.hasIndex(row, column, parent):
+            return QModelIndex()
+
+        parent_entry: Entry
+
+        # if parent is an invalid model index, return an index to the root
+        if not parent.isValid():
+            parent_entry = self.tree.root
+        else:
+            parent_entry = parent.internalPointer()
+
+        if parent_entry.children is None:
+            raise ValueError(f"""index({row=}, {column=}, parent={parent_entry}): attempt to get child from a file""")
+
+        try:
+            entry = parent_entry.children[row]
+        except (IndexError, AttributeError):
+            return QModelIndex()
+
+        return self.createIndex(row, column, entry)  # pylint: disable=undefined-variable
+
+
+
+    @pysnooper.snoop()
+    def parent(self, index: QModelIndex) -> QModelIndex:
+        '''.'''
+        if not index.isValid():
+            return QModelIndex()
+
+        entry: Entry
+
+        entry = index.internalPointer()
+        parent = self.tree.entries[entry.parent_dir]
+
+        if parent == self.tree.root:
+            return QModelIndex()
+
+        return self.createIndex(index.row(), 0, parent)  # pylint: disable=undefined-variable
+
+
+    # pylint: disable=invalid-name
+    def rowCount(self, index: QModelIndex) -> int:
+        '''Return the amount of children of this Entry.'''
+        if index.column() > 0:
+            return 0
+
+        if not index.isValid():
+            entry = self.tree.root
+        else:
+            entry = index.internalPointer()
+
+        if entry.children is None:
+            # file
+            return 0
+
+        return len(entry.children)
+
+
+    # pylint: disable=invalid-name, no-self-use
+    def columnCount(self, index: QModelIndex) -> int:
+        '''Return the amount of columns per Entry.'''
+        if index.isValid():
+            entry = index.internalPointer()
+
+            if entry.children is None:
+                # file: name, size
+                return 2
+            else:
+                # dir: name, local size, total size, selected size
+                return 4
+
+        # the root entry is a dir
+        return 4
+
+
+    # pylint: disable=no-self-use
+    def data(self, index: QModelIndex, role: int) -> QVariant:
+        '''Return data for the view at index, column.'''
+        if not index.isValid():
+            return QVariant()
+
+        if role != Qt.ItemDataRole.DisplayRole:  # type: ignore
+            return QVariant()
+
+        entry = index.internalPointer()
+
+        match index.column():
+            case 0:
+                data = entry.name
+            case 1:
+                data = entry.size
+            # no, I'm not gonna test for file, etc
+            case 2:
+                data = entry.full_size
+            case 3:
+                data = 0
+            case _:
+                raise ValueError(f"""data({entry=}, column={index.column()}) not in [0-4].""")
+
+        return data
+
+
+    # pylint: disable=no-self-use
+    def flags(self, index: QModelIndex) -> Qt.ItemFlag:
+        '''Convince the view we're read only.'''
+        if not index.isValid():
+            return Qt.NoItemFlags  # type: ignore
+
+        return super().flags(index)
+
+
+    # pylint: disable=no-self-use
+    def headerData(self, column: int, orientation: Qt.Orientation, role: int) -> QVariant:
+        '''Return headers for columns.'''
+        if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
+            header = ('Name', 'Size', 'Total Size', 'Selected Size')[column]
+            return header
+
+        return QVariant()
 
 
 def update_sizes(entry):
