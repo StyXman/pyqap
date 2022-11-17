@@ -29,7 +29,7 @@ class Entry:
         self.name = name
         self.size = size
         self.full_size = full_size
-        self.included = False
+        self.selected = False
         self.selected_size = 0
         self.children = children
 
@@ -142,22 +142,25 @@ class Model(QAbstractItemModel):
 
 
     # pylint: disable=no-self-use
-    def raw_data(self, index: QModelIndex) -> QVariant:
+    def raw_data(self, index: QModelIndex, selected=False) -> QVariant:
         '''Return raw data for the view at index, column.'''
         entry = index.internalPointer()
 
-        match index.column():
-            case 0:
-                data = entry.name
-            case 1:
-                data = entry.size
-            # no, I'm not gonna test for file, etc
-            case 2:
-                data = entry.full_size
-            case 3:
-                data = 0
-            case _:
-                raise ValueError(f"""data({entry=}, column={index.column()}) not in [0-4].""")
+        if selected:
+            data = entry.selected
+        else:
+            match index.column():
+                case 0:
+                    data = entry.name
+                case 1:
+                    data = entry.size
+                # no, I'm not gonna test for file, etc
+                case 2:
+                    data = entry.full_size
+                case 3:
+                    data = 0
+                case _:
+                    raise ValueError(f"""data({entry=}, column={index.column()}) not in [0-4].""")
 
         return data
 
@@ -165,21 +168,23 @@ class Model(QAbstractItemModel):
     # pylint: disable=no-self-use
     def data(self, index: QModelIndex, role: int) -> QVariant:
         '''Main interface against the model, but also for other view-type flags.'''
-        if not index.isValid():
-            return QVariant()
+        result = QVariant()
 
-        if role != Qt.ItemDataRole.DisplayRole:  # type: ignore
-            return QVariant()
+        if index.isValid():
+            match role:
+                case Qt.ItemDataRole.DisplayRole:
+                    result = self.raw_data(index)
 
-        data = self.raw_data(index)
+                    match index.column():
+                        case 2:
+                            result = human_size(result)  #  type: ignore
+                        case 3:
+                            result = human_size(result)  #  type: ignore
+                case Qt.ItemDataRole.CheckStateRole:
+                    if index.column() == 0:
+                        result = self.raw_data(index, selected=True)
 
-        match index.column():
-            case 1:
-                data = human_size(data)
-            case 2:
-                data = human_size(data)
-
-        return data
+        return result
 
 
     # pylint: disable=no-self-use
@@ -188,7 +193,12 @@ class Model(QAbstractItemModel):
         if not index.isValid():
             return Qt.ItemFlag.NoItemFlags
 
-        return super().flags(index)
+        flags = super().flags(index)
+
+        if index.column() == 0:
+            flags |= Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEditable | Qt.ItemFlag.ItemIsUserTristate
+
+        return flags
 
 
     # pylint: disable=no-self-use
