@@ -374,6 +374,11 @@ def main():
     tree_view = QTreeView(window)
     tree_view.setModel(sorting_model)
     tree_view.setSortingEnabled(True)
+    for column in range(4):
+        tree_view.resizeColumnToContents(column)
+    tree_view.sortByColumn(2, Qt.SortOrder.DescendingOrder)
+    tree_view.setUniformRowHeights(True)
+    tree_view.setAlternatingRowColors(True)
     tree_view.show()
 
     window.setCentralWidget(tree_view)
