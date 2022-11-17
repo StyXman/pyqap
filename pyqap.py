@@ -164,6 +164,7 @@ class Model(QAbstractItemModel):
 
     # pylint: disable=no-self-use
     def data(self, index: QModelIndex, role: int) -> QVariant:
+        '''Main interface against the model, but also for other view-type flags.'''
         if not index.isValid():
             return QVariant()
 
@@ -206,6 +207,7 @@ class SortableModel(QSortFilterProxyModel):
 
     # pylint: disable=invalid-name, no-self-use
     def lessThan(self, left_index, right_index: QModelIndex) -> bool:
+        '''Returns left[column] < right[column].'''
         try:
             # "QAbstractItemModel" has no attribute "raw_data"
             left = self.sourceModel().raw_data(left_index)    #  type: ignore
@@ -213,7 +215,7 @@ class SortableModel(QSortFilterProxyModel):
             result = left < right
             # print(f"""{left_index.column()}:{left=} < {right_index.column()}:{right=}: {result}""")
             return result
-        except TypeError as e:
+        except TypeError:
             # this is counter intuitive, but this way works
             if right is None:
                 result = False
