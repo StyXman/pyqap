@@ -12,7 +12,7 @@ from typing import Optional# , List
 import unittest
 
 from PyQt6.QtCore import QAbstractItemModel, QModelIndex, QObject, QSortFilterProxyModel, Qt, QVariant  # pylint: disable=no-name-in-module
-from PyQt6.QtWidgets import QApplication, QHBoxLayout, QTreeView, QWidget  # pylint: disable=no-name-in-module
+from PyQt6.QtWidgets import QApplication, QMainWindow, QTreeView  # pylint: disable=no-name-in-module
 
 
 # pylint: disable=too-few-public-methods
@@ -363,11 +363,8 @@ def main():
 
     app = QApplication(sys.argv)
 
-    window = QWidget()
-    window.setWindowTitle('pyqap')
-    window.show()
-
-    layout = QHBoxLayout(window)
+    window = QMainWindow()
+    window.setWindowTitle(f"""pyqap - {root_dir}""")
 
     model = Model(tree, app)
 
@@ -379,7 +376,9 @@ def main():
     tree_view.setSortingEnabled(True)
     tree_view.show()
 
-    layout.addWidget(tree_view)
+    window.setCentralWidget(tree_view)
+
+    window.show()
 
     sys.exit(app.exec())
 
