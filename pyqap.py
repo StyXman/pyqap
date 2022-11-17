@@ -185,7 +185,7 @@ class Model(QAbstractItemModel):
     def flags(self, index: QModelIndex) -> Qt.ItemFlag:
         '''Convince the view we're read only.'''
         if not index.isValid():
-            return Qt.NoItemFlags  # type: ignore
+            return Qt.ItemFlag.NoItemFlags
 
         return super().flags(index)
 
@@ -195,7 +195,8 @@ class Model(QAbstractItemModel):
         '''Return headers for columns.'''
         if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
             header = ('Name', 'Size', 'Total Size', 'Selected Size')[column]
-            return header
+            # Incompatible return value type (got "str", expected "QVariant")
+            return header  #  type: ignore
 
         return QVariant()
 
@@ -206,8 +207,9 @@ class SortableModel(QSortFilterProxyModel):
     # pylint: disable=invalid-name, no-self-use
     def lessThan(self, left_index, right_index: QModelIndex) -> bool:
         try:
-            left = self.sourceModel().raw_data(left_index)
-            right = self.sourceModel().raw_data(right_index)
+            # "QAbstractItemModel" has no attribute "raw_data"
+            left = self.sourceModel().raw_data(left_index)    #  type: ignore
+            right = self.sourceModel().raw_data(right_index)  #  type: ignore
             result = left < right
             # print(f"""{left_index.column()}:{left=} < {right_index.column()}:{right=}: {result}""")
             return result
@@ -262,7 +264,7 @@ def find_files(start: str) -> Tree:
 
 # see https://stackoverflow.com/a/14996816
 suffixes = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB']
-def human_size(size: Optional[int]):
+def human_size(size: Optional[float]):
     '''Return size in a human readbale representation.'''
     if size is None:
         return None
