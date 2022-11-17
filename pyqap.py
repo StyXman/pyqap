@@ -8,7 +8,7 @@ import os
 # from pprint import pprint
 import sys
 
-from typing import Optional# , List
+from typing import Optional, Any
 import unittest
 
 from PyQt6.QtCore import QAbstractItemModel, QModelIndex, QObject, QSortFilterProxyModel, Qt, QVariant  # pylint: disable=no-name-in-module
@@ -29,7 +29,7 @@ class Entry:
         self.name = name
         self.size = size
         self.full_size = full_size
-        self.selected = False
+        self.selected: Optional[bool] = False  # None means PartiallyChecked
         self.selected_size = 0
         self.children = children
 
@@ -145,9 +145,16 @@ class Model(QAbstractItemModel):
     def raw_data(self, index: QModelIndex, selected=False) -> QVariant:
         '''Return raw data for the view at index, column.'''
         entry = index.internalPointer()
+        data: Any
 
         if selected:
-            data = entry.selected
+            match entry.selected:
+                case True:
+                    data = Qt.CheckState.Checked
+                case None:
+                    data = Qt.CheckState.PartiallyChecked
+                case False:
+                    data = Qt.CheckState.Unchecked
         else:
             match index.column():
                 case 0:
@@ -187,6 +194,34 @@ class Model(QAbstractItemModel):
         return result
 
 
+    # pylint: disable=invalid-name, no-self-use
+    def setData(self, index:QModelIndex, value: QVariant, role: int) -> bool:
+        '''Just here to allow setting selected.'''
+        if role == Qt.ItemDataRole.CheckStateRole:
+            if index.isValid() and index.column() == 0:
+                # not needed, pyqt has already converted it
+                # state = value.toInt()
+                state = value
+                entry = index.internalPointer()
+
+                match state:
+                    # for some reason these comparisons don't work with the constants
+                    # maybe because of the automatic conversion to int
+                    # and the constants not being really numbers but another type of objects
+                    case 0:
+                        entry.selected = False
+                    case 1:
+                        entry.selected = None
+                    case 2:
+                        entry.selected = True
+
+                self.dataChanged.emit(index, index, [role])
+
+            return True
+        else:
+            return False
+
+
     # pylint: disable=no-self-use
     def flags(self, index: QModelIndex) -> Qt.ItemFlag:
         '''Convince the view we're read only.'''
@@ -196,7 +231,7 @@ class Model(QAbstractItemModel):
         flags = super().flags(index)
 
         if index.column() == 0:
-            flags |= Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEditable | Qt.ItemFlag.ItemIsUserTristate
+            flags |= Qt.ItemFlag.ItemIsEditable | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsAutoTristate
 
         return flags
 
