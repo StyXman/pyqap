@@ -1,4 +1,4 @@
-all: mypy test lint
+all: test lint mypy
 
 lint:
 	time pylint pyqap.py

@@ -14,6 +14,13 @@ import unittest
 from PyQt6.QtCore import QAbstractItemModel, QModelIndex, QObject, QSortFilterProxyModel, Qt, QVariant  # pylint: disable=no-name-in-module
 from PyQt6.QtWidgets import QApplication, QMainWindow, QTreeView  # pylint: disable=no-name-in-module
 
+# import pysnooper
+# @pysnooper.snoop()
+
+# 'constants'
+File = object()
+SymLink = object()
+Directory = object()
 
 # pylint: disable=too-few-public-methods
 class Tree:
@@ -178,6 +185,7 @@ class Model(QAbstractItemModel):
         result = QVariant()
 
         if index.isValid():
+            # print(f"""{role=}""")
             match role:
                 case Qt.ItemDataRole.DisplayRole:
                     result = self.raw_data(index)
@@ -190,6 +198,7 @@ class Model(QAbstractItemModel):
                 case Qt.ItemDataRole.CheckStateRole:
                     if index.column() == 0:
                         result = self.raw_data(index, selected=True)
+                        # print(f"""{result=}""")
 
         return result
 
@@ -197,11 +206,13 @@ class Model(QAbstractItemModel):
     # pylint: disable=invalid-name, no-self-use
     def setData(self, index:QModelIndex, value: QVariant, role: int) -> bool:
         '''Just here to allow setting selected.'''
+        # print(f"""{role=}""")
         if role == Qt.ItemDataRole.CheckStateRole:
             if index.isValid() and index.column() == 0:
                 # not needed, pyqt has already converted it
                 # state = value.toInt()
                 state = value
+                # print(f"""new_{state=} [{int(Qt.CheckState.Unchecked)}, {Qt.CheckState.PartiallyChecked}, {Qt.CheckState.Checked}]""")
                 entry = index.internalPointer()
 
                 match state:
@@ -209,17 +220,71 @@ class Model(QAbstractItemModel):
                     # maybe because of the automatic conversion to int
                     # and the constants not being really numbers but another type of objects
                     case 0:
+                        # print(f"""Unchecked""")
                         entry.selected = False
                     case 1:
+                        # print(f"""PartiallyChecked""")
                         entry.selected = None
                     case 2:
+                        # print(f"""Checked""")
                         entry.selected = True
+                # print(f"""{entry.selected=}""")
+
+                # now here's the thing
+                # initially I thought of using the tristates to signal partial backup, which still makes sense, but...
+                # assume this scenario:
+
+                # [.] root
+                #  `-- [.] child1
+                #       `-- [ ] grand_child1
+                #       `-- [x] grand_child2
+                #  `-- [x] child2
+                #       `-- [x] grand_child3
+                #       `-- [x] grand_child4
+
+                # this could result in include = [ child1/grand_child2, child2 ], exclude = []
+                # or include = [ child1, child2 ], exclude = [ child1/grand_child1 ]
+                # or even include = [ <root> ], exclude = [ child1/grand_child1 ]
+
+                # so I think I will just register inclusions and exclusions as selects/deselects
+                # and then I will have to figure out what to do about new files
+
+                # this si going to be a braindump for the moment because I don't have enough consecutive time to write
+                # the code yet
+
+                # have a methos called from user interaction called select() or similar
+                # select() does three things (cue The Spanish Inquisition):
+
+                # * marks the entry as for inclusion or exclusion (based on boolean)
+                # * propagates the de/selection down the tree
+                #   * this does not mark the children for in/exclusion, just the backing boolean
+                #   * updates the selected backup size
+                #   * emits the changed signal
+                # * updates the boolean that backs the checkbox
+                # * updates the selected backup size
+                # * emits the changed signal
+
+                # so we now know what to put in the recursive method
+
+                # also, if while propagating a de/selection we find a ex/included entry, ~we remove it~
+                # scratch that. we keep them, so we can revert a paren'þs de/selection,
+                # but later we will need a collapsing algo to remove them
+
+                # TODO: despite what the docs seem to imply, PartiallyChecked must be implemented by hand
+                # see https://stackoverflow.com/a/49160046
+                # self.propagate_change(index, state)
 
                 self.dataChanged.emit(index, index, [role])
 
             return True
         else:
             return False
+
+
+    def propagate_change(self, index: QModelIndex, state: int):
+        '''.'''
+        # this doesn't have to be recursive, as setData() will call us again
+        pass
 
 
     # pylint: disable=no-self-use
@@ -231,7 +296,7 @@ class Model(QAbstractItemModel):
         flags = super().flags(index)
 
         if index.column() == 0:
-            flags |= Qt.ItemFlag.ItemIsEditable | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsAutoTristate
+            flags |= Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsAutoTristate
 
         return flags
 
@@ -405,10 +470,33 @@ class TestFindFiles(unittest.TestCase):
         dump_tree(self.tree.root)
 
 
+def TestSelection(unittest.TestCase):
+    def setUp(self):
+        self.tree = find_files('tests/find_files')
+
+    # tests/find_files/dir2
+    # tests/find_files/dir2/dir3
+    # tests/find_files/dir2/dir3/40k
+    # tests/find_files/dir2/dir3/dangling
+    # tests/find_files/dir2/30k
+    # tests/find_files/10k
+    # tests/find_files/yes-2
+    # tests/find_files/yes-3
+    # tests/find_files/no-1
+    # tests/find_files/dir1
+    # tests/find_files/dir1/20k
+    # tests/find_files/no-2
+    # tests/find_files/yes-1
+    def test_select_dir2_deselect_dir3_select_40k(self):
+        self
+
+
 def main():
     ''' Main function. '''
-    tree = find_files('tests')
-    dump_tree(tree.root)
+    # root_dir = os.path.join(os.environ['HOME'], 'src', 'projects')
+    root_dir = 'tests'
+    tree = find_files(root_dir)
+    # dump_tree(tree.root)
 
     app = QApplication(sys.argv)
 
@@ -416,8 +504,10 @@ def main():
     window.setWindowTitle(f"""pyqap - {root_dir}""")
 
     model = Model(tree, app)
+    model.dataChanged.connect(lambda *x: print(x))
 
     sorting_model = SortableModel(app)
+    # sorting_model = QSortFilterProxyModel(app)
     sorting_model.setSourceModel(model)
 
     tree_view = QTreeView(window)
@@ -426,6 +516,7 @@ def main():
     for column in range(4):
         tree_view.resizeColumnToContents(column)
     tree_view.sortByColumn(2, Qt.SortOrder.DescendingOrder)
+    # tree_view.setRootIsDecorated(False)
     tree_view.setUniformRowHeights(True)
     tree_view.setAlternatingRowColors(True)
     tree_view.show()
